@@ -2,7 +2,7 @@
 
 This library will support highlight text by tags with specific styles and tap actions.
 
-<img src="https://user-images.githubusercontent.com/48360868/153119778-47295c2b-363f-4e24-b70b-9002d2c43253.png" width="320px" />
+<img src="https://user-images.githubusercontent.com/48360868/153123301-b7a93a8c-c7a7-425a-8ba9-60b7fb5a6733.png" width="320px" />
 
 ## Usage
 
