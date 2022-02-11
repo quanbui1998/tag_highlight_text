@@ -14,7 +14,7 @@ class TagHighlightText extends StatelessWidget {
   const TagHighlightText({
     Key? key,
     required this.text,
-    required this.highlightMaps,
+    required this.highlightBuilder,
     this.textStyle,
     this.textAlign = TextAlign.start,
     this.textDirection,
@@ -37,12 +37,12 @@ class TagHighlightText extends StatelessWidget {
   final Locale? locale;
   final StrutStyle? strutStyle;
 
-  final Map<String, HighlightData> highlightMaps;
+  final HighlightData? Function(String tagName) highlightBuilder;
 
   @override
   Widget build(BuildContext context) {
     return RichText(
-      text: _generate(),
+      text: _buildTextSpan(),
       locale: locale,
       maxLines: maxLines,
       overflow: overflow,
@@ -54,134 +54,108 @@ class TagHighlightText extends StatelessWidget {
     );
   }
 
-  TextSpan _generate() {
-    final List<_StatusTag> statusTags = [];
-    highlightMaps.forEach((tagName, _) {
-      statusTags
-          .addAll(RegExp('<$tagName>').allMatches(text).map((e) => _StatusTag(
-                tagName: tagName,
-                positionStart: e.start,
-                positionEnd: e.end,
-                isStart: true,
-              )));
-      statusTags
-          .addAll(RegExp('</$tagName>').allMatches(text).map((e) => _StatusTag(
-                tagName: tagName,
-                positionStart: e.start,
-                positionEnd: e.end,
-                isStart: false,
-              )));
-    });
-    statusTags.sort((a, b) => a.positionStart - b.positionStart);
-    final List<_StatusText> listStatusTexts = [];
-    for (int i = 0; i < statusTags.length; i++) {
-      if (!statusTags[i].isStart) {
-        if (i > 0 &&
-            statusTags[i].tagName == statusTags[i - 1].tagName &&
-            statusTags[i - 1].isStart) {
-          final List<_StatusText> statusTextChildren = [];
-          for (int j = 0; j < listStatusTexts.length; j++) {
-            if (listStatusTexts[j].positionStart >
-                    statusTags[i - 1].positionStart &&
-                listStatusTexts[j].positionEnd < statusTags[i].positionEnd) {
-              statusTextChildren.add(listStatusTexts[j]);
-              listStatusTexts.removeAt(j);
-              j--;
-            }
-          }
-          listStatusTexts.add(_StatusText(
-            tagName: statusTags[i].tagName,
-            positionStart: statusTags[i - 1].positionStart,
-            positionEnd: statusTags[i].positionEnd,
-            children: statusTextChildren,
-          ));
-          statusTags.removeRange(i - 1, i + 1);
-          i -= 2;
-        } else {
-          return TextSpan(text: text, style: textStyle);
-        }
-      }
-    }
-    if (listStatusTexts.isEmpty) {
+  TextSpan _buildTextSpan() {
+    final matches = RegExp(r'</?[a-zA-Z0-9_-]+>').allMatches(text);
+    if (matches.isEmpty) {
       return TextSpan(text: text, style: textStyle);
     }
-    return _buildTextSpan(
-        _StatusText(
-            tagName: '',
-            positionStart: 0,
-            positionEnd: 0,
-            children: listStatusTexts),
-        true);
-  }
 
-  TextSpan _buildTextSpan(_StatusText statusText, [bool isRoot = false]) {
-    final highlightHandler = isRoot
-        ? HighlightData(style: textStyle)
-        : highlightMaps[statusText.tagName];
-    final positionTextStart = isRoot
-        ? 0
-        : statusText.positionStart + '<${statusText.tagName}>'.length;
-    final positionTextEnd = isRoot
-        ? text.length
-        : statusText.positionEnd - '</${statusText.tagName}>'.length;
-    if (statusText.children.isNotEmpty) {
-      statusText.children.sort((a, b) => a.positionStart - b.positionStart);
-      int index = positionTextStart;
-      final List<TextSpan> textSpanChildren = [];
-      for (final element in statusText.children) {
-        if (index < element.positionStart) {
-          textSpanChildren.add(
-              TextSpan(text: text.substring(index, element.positionStart)));
+    final List<TextSpan> childrenOfRoot = [];
+    final List<_HighlightTag> listTagOpen = [];
+    bool isValidText = true;
+
+    for (int i = 0; i < matches.length; i++) {
+      final element = matches.elementAt(i);
+      final tag = text.substring(element.start, element.end);
+      final isEnd = tag.startsWith('</');
+      final tagName = tag.replaceAll(RegExp(r'[</>]'), '');
+      if (isEnd) {
+        if (listTagOpen.isNotEmpty && listTagOpen.last.tagName == tagName) {
+          final highlightData = highlightBuilder(tagName);
+          final textStart = matches.elementAt(i - 1).end;
+          final textEnd = element.start;
+          TextSpan? textSpan;
+          if (textStart < textEnd) {
+            if (listTagOpen.last.children.isNotEmpty) {
+              listTagOpen.last.children
+                  .add(TextSpan(text: text.substring(textStart, textEnd)));
+              textSpan = TextSpan(
+                children: listTagOpen.last.children,
+                style: highlightData?.style,
+                recognizer: TapGestureRecognizer()
+                  ..onTap = () {
+                    highlightData?.onTap?.call();
+                  },
+              );
+            } else {
+              textSpan = TextSpan(
+                text: text.substring(textStart, textEnd),
+                style: highlightData?.style,
+                recognizer: TapGestureRecognizer()
+                  ..onTap = () {
+                    highlightData?.onTap?.call();
+                  },
+              );
+            }
+          } else if (listTagOpen.last.children.isNotEmpty) {
+            textSpan = TextSpan(
+              children: listTagOpen.last.children,
+              style: highlightData?.style,
+              recognizer: TapGestureRecognizer()
+                ..onTap = () {
+                  highlightData?.onTap?.call();
+                },
+            );
+          }
+          listTagOpen.removeLast();
+          if (textSpan != null) {
+            if (listTagOpen.isNotEmpty) {
+              listTagOpen.last.children.add(textSpan);
+            } else {
+              childrenOfRoot.add(textSpan);
+            }
+          }
+        } else {
+          isValidText = false;
+          break;
         }
-        textSpanChildren.add(_buildTextSpan(element));
-        index = element.positionEnd;
+      } else {
+        final statusText = _HighlightTag(
+          tagName: tagName,
+          positionStart: element.start,
+          positionEnd: element.end,
+        );
+        final textStart = i > 0 ? matches.elementAt(i - 1).end : 0;
+        final textEnd = statusText.positionStart;
+        if (textStart < textEnd) {
+          final textSpan = TextSpan(text: text.substring(textStart, textEnd));
+          if (listTagOpen.isNotEmpty) {
+            listTagOpen.last.children.add(textSpan);
+          } else {
+            childrenOfRoot.add(textSpan);
+          }
+        }
+        listTagOpen.add(statusText);
       }
-      if (index < positionTextEnd) {
-        textSpanChildren
-            .add(TextSpan(text: text.substring(index, positionTextEnd)));
-      }
-      return TextSpan(
-          children: textSpanChildren,
-          recognizer: TapGestureRecognizer()
-            ..onTap = () {
-              highlightHandler?.onTap?.call();
-            },
-          style: highlightHandler?.style);
+    }
+
+    if (isValidText && listTagOpen.isEmpty) {
+      return TextSpan(children: childrenOfRoot, style: textStyle);
     } else {
-      return TextSpan(
-          text: text.substring(positionTextStart, positionTextEnd),
-          recognizer: TapGestureRecognizer()
-            ..onTap = () {
-              highlightHandler?.onTap?.call();
-            },
-          style: highlightHandler?.style);
+      return TextSpan(text: text, style: textStyle);
     }
   }
 }
 
-class _StatusText {
-  _StatusText({
+class _HighlightTag {
+  _HighlightTag({
     required this.tagName,
     required this.positionStart,
     required this.positionEnd,
-    required this.children,
   });
 
   final String tagName;
   final int positionStart;
   final int positionEnd;
-  final List<_StatusText> children;
-}
-
-class _StatusTag {
-  _StatusTag({
-    required this.tagName,
-    required this.positionStart,
-    required this.positionEnd,
-    required this.isStart,
-  });
-  final String tagName;
-  final int positionStart;
-  final int positionEnd;
-  final bool isStart;
+  List<TextSpan> children = [];
 }
