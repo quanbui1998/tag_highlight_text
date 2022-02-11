@@ -1,6 +1,6 @@
 name: tag_highlight_text
 description: This library will support highlight text by tags with specific styles and tap actions.
-version: 1.0.0
+version: 1.0.1
 homepage: https://github.com/quanbui1998/tag_highlight_text
 
 environment:
