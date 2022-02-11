@@ -140,6 +140,9 @@ class TagHighlightText extends StatelessWidget {
     }
 
     if (isValidText && listTagOpen.isEmpty) {
+      if (matches.last.end < text.length) {
+        childrenOfRoot.add(TextSpan(text: text.substring(matches.last.end)));
+      }
       return TextSpan(children: childrenOfRoot, style: textStyle);
     } else {
       return TextSpan(text: text, style: textStyle);
