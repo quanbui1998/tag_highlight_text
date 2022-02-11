@@ -24,7 +24,8 @@ class MyHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final text = 'This is <highlight>Highlight <bold>Text</bold></highlight>';
+    final text =
+        'This is <highlight>Highlight <bold>Text</bold></highlight>. Click <link>here</link>';
     return Scaffold(
       appBar: AppBar(
         title: Text("Tag Highlight Text Example"),
@@ -34,20 +35,31 @@ class MyHomePage extends StatelessWidget {
           child: Center(
             child: TagHighlightText(
               text: text,
-              highlightMaps: {
-                'highlight': HighlightData(
-                  style: TextStyle(
-                    color: Colors.red,
-                  ),
-                ),
-                'bold': HighlightData(
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                  onTap: () {
-                    print('Click');
-                  },
-                )
+              highlightBuilder: (tagName) {
+                switch (tagName) {
+                  case 'highlight':
+                    return HighlightData(
+                      style: TextStyle(
+                        color: Colors.red,
+                      ),
+                    );
+                  case 'bold':
+                    return HighlightData(
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    );
+                  case 'link':
+                    return HighlightData(
+                      style: TextStyle(
+                        color: Colors.blue,
+                        decoration: TextDecoration.underline,
+                      ),
+                      onTap: () {
+                        print('Click');
+                      },
+                    );
+                }
               },
               textStyle: TextStyle(
                 color: Colors.black,
