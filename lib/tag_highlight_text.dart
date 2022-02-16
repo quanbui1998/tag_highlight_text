@@ -7,7 +7,10 @@ class HighlightData {
     this.onTap,
   });
   final TextStyle? style;
-  final VoidCallback? onTap;
+
+  /// [onTap] is only effective for events that directly hit the
+  /// [text] in a tag which has not parent tag, not any of tag in tag.
+  final void Function(String text)? onTap;
 }
 
 class TagHighlightText extends StatelessWidget {
@@ -82,18 +85,15 @@ class TagHighlightText extends StatelessWidget {
               textSpan = TextSpan(
                 children: listTagOpen.last.children,
                 style: highlightData?.style,
-                recognizer: TapGestureRecognizer()
-                  ..onTap = () {
-                    highlightData?.onTap?.call();
-                  },
               );
             } else {
+              final subText = text.substring(textStart, textEnd);
               textSpan = TextSpan(
-                text: text.substring(textStart, textEnd),
+                text: subText,
                 style: highlightData?.style,
                 recognizer: TapGestureRecognizer()
                   ..onTap = () {
-                    highlightData?.onTap?.call();
+                    highlightData?.onTap?.call(subText);
                   },
               );
             }
@@ -101,10 +101,6 @@ class TagHighlightText extends StatelessWidget {
             textSpan = TextSpan(
               children: listTagOpen.last.children,
               style: highlightData?.style,
-              recognizer: TapGestureRecognizer()
-                ..onTap = () {
-                  highlightData?.onTap?.call();
-                },
             );
           }
           listTagOpen.removeLast();

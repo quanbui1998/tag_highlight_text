@@ -1,5 +1,8 @@
+## 1.0.2
+Add `text` in tag for tapped action.
 ## 1.0.1+1
 Hot fix 1.0.1
+
 ## 1.0.1
 Optimize code. Change `highlightMaps` to `highlightBuilder`
 

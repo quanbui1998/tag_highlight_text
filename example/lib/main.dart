@@ -55,8 +55,8 @@ class MyHomePage extends StatelessWidget {
                         color: Colors.blue,
                         decoration: TextDecoration.underline,
                       ),
-                      onTap: () {
-                        print('Click');
+                      onTap: (text) {
+                        print('Click ' + text);
                       },
                     );
                 }
