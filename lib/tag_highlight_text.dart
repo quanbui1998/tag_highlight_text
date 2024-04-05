@@ -5,12 +5,16 @@ class HighlightData {
   HighlightData({
     this.style,
     this.onTap,
+    this.builder,
   });
   final TextStyle? style;
 
   /// [onTap] is only effective for events that directly hit the
   /// [text] in a tag which has not parent tag, not any of tag in tag.
   final void Function(String text)? onTap;
+
+  /// [builder] allow custom build
+  final InlineSpan Function(String text)? builder;
 }
 
 class TagHighlightText extends StatelessWidget {
@@ -23,7 +27,7 @@ class TagHighlightText extends StatelessWidget {
     this.textDirection,
     this.softWrap = true,
     this.overflow = TextOverflow.clip,
-    this.textScaleFactor = 1.0,
+    this.textScaller = TextScaler.noScaling,
     this.maxLines,
     this.locale,
     this.strutStyle,
@@ -35,7 +39,7 @@ class TagHighlightText extends StatelessWidget {
   final TextDirection? textDirection;
   final bool softWrap;
   final TextOverflow overflow;
-  final double textScaleFactor;
+  final TextScaler textScaller;
   final int? maxLines;
   final Locale? locale;
   final StrutStyle? strutStyle;
@@ -52,18 +56,18 @@ class TagHighlightText extends StatelessWidget {
       softWrap: softWrap,
       strutStyle: strutStyle,
       textAlign: textAlign,
+      textScaler: textScaller,
       textDirection: textDirection,
-      textScaleFactor: textScaleFactor,
     );
   }
 
-  TextSpan _buildTextSpan() {
+  InlineSpan _buildTextSpan() {
     final matches = RegExp(r'</?[a-zA-Z0-9_-]+>').allMatches(text);
     if (matches.isEmpty) {
       return TextSpan(text: text, style: textStyle);
     }
 
-    final List<TextSpan> childrenOfRoot = [];
+    final List<InlineSpan> childrenOfRoot = [];
     final List<_HighlightTag> listTagOpen = [];
     bool isValidText = true;
 
@@ -77,38 +81,39 @@ class TagHighlightText extends StatelessWidget {
           final highlightData = highlightBuilder(tagName);
           final textStart = matches.elementAt(i - 1).end;
           final textEnd = element.start;
-          TextSpan? textSpan;
+          InlineSpan? childSpan;
           if (textStart < textEnd) {
             if (listTagOpen.last.children.isNotEmpty) {
               listTagOpen.last.children
                   .add(TextSpan(text: text.substring(textStart, textEnd)));
-              textSpan = TextSpan(
+              childSpan = TextSpan(
                 children: listTagOpen.last.children,
                 style: highlightData?.style,
               );
             } else {
               final subText = text.substring(textStart, textEnd);
-              textSpan = TextSpan(
-                text: subText,
-                style: highlightData?.style,
-                recognizer: TapGestureRecognizer()
-                  ..onTap = () {
-                    highlightData?.onTap?.call(subText);
-                  },
-              );
+              childSpan = highlightData?.builder?.call(subText) ??
+                  TextSpan(
+                    text: subText,
+                    style: highlightData?.style,
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () {
+                        highlightData?.onTap?.call(subText);
+                      },
+                  );
             }
           } else if (listTagOpen.last.children.isNotEmpty) {
-            textSpan = TextSpan(
+            childSpan = TextSpan(
               children: listTagOpen.last.children,
               style: highlightData?.style,
             );
           }
           listTagOpen.removeLast();
-          if (textSpan != null) {
+          if (childSpan != null) {
             if (listTagOpen.isNotEmpty) {
-              listTagOpen.last.children.add(textSpan);
+              listTagOpen.last.children.add(childSpan);
             } else {
-              childrenOfRoot.add(textSpan);
+              childrenOfRoot.add(childSpan);
             }
           }
         } else {
@@ -156,5 +161,5 @@ class _HighlightTag {
   final String tagName;
   final int positionStart;
   final int positionEnd;
-  List<TextSpan> children = [];
+  List<InlineSpan> children = [];
 }

@@ -49,6 +49,34 @@ TagHighlightText(
             print('Click ' + text);
           },
         );
+      return null;
+    }
+  },
+  textStyle: TextStyle(
+    color: Colors.black,
+    fontSize: 18,
+  ),
+),
+```
+
+You can custom build content of mark highlight texts by `builder`
+``` dart
+TagHighlightText(
+  text: text,
+  highlightBuilder: (tagName) {
+    switch (tagName) {
+      case 'highlight':
+        return HighlightData(
+          builder: (text) => WidgetSpan(
+            child: CupertinoButton(
+              onPressed: () {
+                // TODO
+              },
+              child: Text(text),
+            ),
+          ),
+        );
+      return null;
     }
   },
   textStyle: TextStyle(
